@@ -29,11 +29,9 @@ UefiDecompress(
   UINT32        SrcDataSize;
   UINT32        DstDataSize;
   UINTN         Status;
-  UINT8         *SrcBuf;
   UINT8         *DstBuf;
-  UINT8         *TmpBuf;
-  Py_ssize_t    SegNum;
-  Py_ssize_t    Index;
+  Py_buffer     PyB;
+
 
   Status = PyArg_ParseTuple(
             Args,
@@ -45,49 +43,28 @@ UefiDecompress(
     return NULL;
   }
 
-  if (SrcData->ob_type->tp_as_buffer == NULL
-      || SrcData->ob_type->tp_as_buffer->bf_getreadbuffer == NULL
-      || SrcData->ob_type->tp_as_buffer->bf_getsegcount == NULL) {
+  if (PyObject_CheckBuffer(SrcData) == 0) {
     PyErr_SetString(PyExc_Exception, "First argument is not a buffer\n");
     return NULL;
   }
 
-  // Because some Python objects which support "buffer" protocol have more than one
-  // memory segment, we have to copy them into a contiguous memory.
-  SrcBuf = PyMem_Malloc(SrcDataSize);
-  if (SrcBuf == NULL) {
-    PyErr_SetString(PyExc_Exception, "Not enough memory\n");
-    goto ERROR;
+  if (PyObject_GetBuffer(SrcData, &PyB, PyBUF_SIMPLE) < 0) {
+    PyErr_SetString(PyExc_Exception, "Failed getting buffer for first argument\n");
+    return NULL;
   }
 
-  SegNum = SrcData->ob_type->tp_as_buffer->bf_getsegcount((PyObject *)SrcData, NULL);
-  TmpBuf = SrcBuf;
-  for (Index = 0; Index < SegNum; ++Index) {
-    VOID *BufSeg;
-    Py_ssize_t Len;
-
-    Len = SrcData->ob_type->tp_as_buffer->bf_getreadbuffer((PyObject *)SrcData, Index, &BufSeg);
-    if (Len < 0) {
-      PyErr_SetString(PyExc_Exception, "Buffer segment is not available\n");
-      goto ERROR;
-    }
-    memcpy(TmpBuf, BufSeg, Len);
-    TmpBuf += Len;
-  }
-
-  Status = Extract((VOID *)SrcBuf, SrcDataSize, (VOID **)&DstBuf, &DstDataSize, 1);
+  Status = Extract(PyB.buf, PyB.len, (VOID **)&DstBuf, &DstDataSize, 1);
+  PyBuffer_Release(&PyB);
   if (Status != EFI_SUCCESS) {
     PyErr_SetString(PyExc_Exception, "Failed to decompress\n");
     goto ERROR;
   }
-
+#if PY_MAJOR_VERSION >= 3
+  return PyMemoryView_FromMemory((char*)DstBuf, (Py_ssize_t)DstDataSize, PyBUF_READ);
+#else
   return PyBuffer_FromMemory(DstBuf, (Py_ssize_t)DstDataSize);
-
+#endif
 ERROR:
-  if (SrcBuf != NULL) {
-    free(SrcBuf);
-  }
-
   if (DstBuf != NULL) {
     free(DstBuf);
   }
@@ -106,11 +83,8 @@ FrameworkDecompress(
   UINT32        SrcDataSize;
   UINT32        DstDataSize;
   UINTN         Status;
-  UINT8         *SrcBuf;
   UINT8         *DstBuf;
-  UINT8         *TmpBuf;
-  Py_ssize_t    SegNum;
-  Py_ssize_t    Index;
+  Py_buffer     PyB;
 
   Status = PyArg_ParseTuple(
             Args,
@@ -122,48 +96,25 @@ FrameworkDecompress(
     return NULL;
   }
 
-  if (SrcData->ob_type->tp_as_buffer == NULL
-      || SrcData->ob_type->tp_as_buffer->bf_getreadbuffer == NULL
-      || SrcData->ob_type->tp_as_buffer->bf_getsegcount == NULL) {
+  if (PyObject_CheckBuffer(SrcData) == 0) {
     PyErr_SetString(PyExc_Exception, "First argument is not a buffer\n");
     return NULL;
   }
 
   // Because some Python objects which support "buffer" protocol have more than one
   // memory segment, we have to copy them into a contiguous memory.
-  SrcBuf = PyMem_Malloc(SrcDataSize);
-  if (SrcBuf == NULL) {
-    PyErr_SetString(PyExc_Exception, "Not enough memory\n");
-    goto ERROR;
-  }
+  PyObject_GetBuffer(SrcData, &PyB, PyBUF_SIMPLE);
 
-  SegNum = SrcData->ob_type->tp_as_buffer->bf_getsegcount((PyObject *)SrcData, NULL);
-  TmpBuf = SrcBuf;
-  for (Index = 0; Index < SegNum; ++Index) {
-    VOID *BufSeg;
-    Py_ssize_t Len;
-
-    Len = SrcData->ob_type->tp_as_buffer->bf_getreadbuffer((PyObject *)SrcData, Index, &BufSeg);
-    if (Len < 0) {
-      PyErr_SetString(PyExc_Exception, "Buffer segment is not available\n");
-      goto ERROR;
-    }
-    memcpy(TmpBuf, BufSeg, Len);
-    TmpBuf += Len;
-  }
-
-  Status = Extract((VOID *)SrcBuf, SrcDataSize, (VOID **)&DstBuf, &DstDataSize, 2);
+  Status = Extract(PyB.buf, PyB.len, (VOID **)&DstBuf, &DstDataSize, 2);
+  PyBuffer_Release(&PyB);
   if (Status != EFI_SUCCESS) {
     PyErr_SetString(PyExc_Exception, "Failed to decompress\n");
     goto ERROR;
   }
 
-  return PyString_FromStringAndSize((CONST INT8*)DstBuf, (Py_ssize_t)DstDataSize);
+  return PyBytes_FromStringAndSize((const char*)DstBuf, (Py_ssize_t)DstDataSize);
 
 ERROR:
-  if (SrcBuf != NULL) {
-    free(SrcBuf);
-  }
 
   if (DstBuf != NULL) {
     free(DstBuf);
@@ -183,11 +134,8 @@ UefiCompress(
   UINT32        SrcDataSize;
   UINT32        DstDataSize;
   UINTN         Status;
-  UINT8         *SrcBuf;
   UINT8         *DstBuf;
-  UINT8         *TmpBuf;
-  Py_ssize_t    SegNum;
-  Py_ssize_t    Index;
+  Py_buffer     PyB;
 
   Status = PyArg_ParseTuple(
             Args,
@@ -199,57 +147,33 @@ UefiCompress(
     return NULL;
   }
 
-  if (SrcData->ob_type->tp_as_buffer == NULL
-      || SrcData->ob_type->tp_as_buffer->bf_getreadbuffer == NULL
-      || SrcData->ob_type->tp_as_buffer->bf_getsegcount == NULL) {
+  if (PyObject_CheckBuffer(SrcData) == 0) {
     PyErr_SetString(PyExc_Exception, "First argument is not a buffer\n");
     return NULL;
   }
 
-  // Because some Python objects which support "buffer" protocol have more than one
-  // memory segment, we have to copy them into a contiguous memory.
-  SrcBuf = PyMem_Malloc(SrcDataSize);
-  if (SrcBuf == NULL) {
-    PyErr_SetString(PyExc_Exception, "Not enough memory\n");
-    goto ERROR;
-  }
-
-  DstBuf = PyMem_Malloc(SrcDataSize);
-  if (DstBuf == NULL) {
-    PyErr_SetString(PyExc_Exception, "Not enough memory\n");
-    goto ERROR;
+  if (PyObject_GetBuffer(SrcData, &PyB, PyBUF_SIMPLE) < 0) {
+    PyErr_SetString(PyExc_Exception, "Failed getting buffer for first argument\n");
+    return NULL;
   }
 
   DstDataSize = SrcDataSize;
+  DstBuf = PyMem_Malloc(DstDataSize);
 
-  SegNum = SrcData->ob_type->tp_as_buffer->bf_getsegcount((PyObject *)SrcData, NULL);
-  TmpBuf = SrcBuf;
-  for (Index = 0; Index < SegNum; ++Index) {
-    VOID *BufSeg;
-    Py_ssize_t Len;
-
-    Len = SrcData->ob_type->tp_as_buffer->bf_getreadbuffer((PyObject *)SrcData, Index, &BufSeg);
-    if (Len < 0) {
-      PyErr_SetString(PyExc_Exception, "Buffer segment is not available\n");
-      goto ERROR;
-    }
-    memcpy(TmpBuf, BufSeg, Len);
-    TmpBuf += Len;
-  }
-
-  Status = EfiCompress((VOID *)SrcBuf, SrcDataSize, (VOID *)DstBuf, &DstDataSize);
-
+  Status = EfiCompress(PyB.buf, PyB.len, (VOID *)DstBuf, &DstDataSize);
+  PyBuffer_Release(&PyB);
   if (Status != EFI_SUCCESS) {
     PyErr_SetString(PyExc_Exception, "Failed to compress\n");
     goto ERROR;
   }
 
+#if PY_MAJOR_VERSION >= 3
+  return PyMemoryView_FromMemory((char*)DstBuf, (Py_ssize_t)DstDataSize, PyBUF_READ);
+#else
   return PyBuffer_FromMemory(DstBuf, (Py_ssize_t)DstDataSize);
+#endif
 
 ERROR:
-  if (SrcBuf != NULL) {
-    free(SrcBuf);
-  }
 
   if (DstBuf != NULL) {
     free(DstBuf);
@@ -269,11 +193,8 @@ FrameworkCompress(
   UINT32        SrcDataSize;
   UINT32        DstDataSize;
   UINTN         Status;
-  UINT8         *SrcBuf;
   UINT8         *DstBuf;
-  UINT8         *TmpBuf;
-  Py_ssize_t    SegNum;
-  Py_ssize_t    Index;
+  Py_buffer     PyB;
 
   Status = PyArg_ParseTuple(
             Args,
@@ -285,78 +206,73 @@ FrameworkCompress(
     return NULL;
   }
 
-  if (SrcData->ob_type->tp_as_buffer == NULL
-      || SrcData->ob_type->tp_as_buffer->bf_getreadbuffer == NULL
-      || SrcData->ob_type->tp_as_buffer->bf_getsegcount == NULL) {
+  if (PyObject_CheckBuffer(SrcData) == 0) {
     PyErr_SetString(PyExc_Exception, "First argument is not a buffer\n");
     return NULL;
   }
 
-  // Because some Python objects which support "buffer" protocol have more than one
-  // memory segment, we have to copy them into a contiguous memory.
-  SrcBuf = PyMem_Malloc(SrcDataSize);
-  if (SrcBuf == NULL) {
-    PyErr_SetString(PyExc_Exception, "Not enough memory\n");
-    goto ERROR;
+  if (PyObject_GetBuffer(SrcData, &PyB, PyBUF_SIMPLE) < 0) {
+    PyErr_SetString(PyExc_Exception, "Failed getting buffer for first argument\n");
+    return NULL;
   }
 
-  DstBuf = PyMem_Malloc(SrcDataSize);
+  DstDataSize = SrcDataSize;
+  DstBuf = PyMem_Malloc(DstDataSize);
   if (DstBuf == NULL) {
     PyErr_SetString(PyExc_Exception, "Not enough memory\n");
     goto ERROR;
   }
 
-  DstDataSize = SrcDataSize;
-
-  SegNum = SrcData->ob_type->tp_as_buffer->bf_getsegcount((PyObject *)SrcData, NULL);
-  TmpBuf = SrcBuf;
-  for (Index = 0; Index < SegNum; ++Index) {
-    VOID *BufSeg;
-    Py_ssize_t Len;
-
-    Len = SrcData->ob_type->tp_as_buffer->bf_getreadbuffer((PyObject *)SrcData, Index, &BufSeg);
-    if (Len < 0) {
-      PyErr_SetString(PyExc_Exception, "Buffer segment is not available\n");
-      goto ERROR;
-    }
-    memcpy(TmpBuf, BufSeg, Len);
-    TmpBuf += Len;
-  }
-
-  Status = TianoCompress((VOID *)SrcBuf, SrcDataSize, (VOID *)DstBuf, &DstDataSize);
-
+  Status = TianoCompress(PyB.buf, PyB.len, (VOID *)DstBuf, &DstDataSize);
+  PyBuffer_Release(&PyB);
   if (Status != EFI_SUCCESS) {
     PyErr_SetString(PyExc_Exception, "Failed to compress\n");
     goto ERROR;
   }
 
+#if PY_MAJOR_VERSION >= 3
+  return PyMemoryView_FromMemory((char*)DstBuf, (Py_ssize_t)DstDataSize, PyBUF_READ);
+#else
   return PyBuffer_FromMemory(DstBuf, (Py_ssize_t)DstDataSize);
+#endif
 
 ERROR:
-  if (SrcBuf != NULL) {
-    free(SrcBuf);
-  }
-
   if (DstBuf != NULL) {
     free(DstBuf);
   }
   return NULL;
 }
 
-STATIC INT8 DecompressDocs[] = "Decompress(): Decompress data using UEFI standard algorithm\n";
-STATIC INT8 CompressDocs[] = "Compress(): Compress data using UEFI standard algorithm\n";
+const char DecompressDocs[] = "Decompress(): Decompress data using UEFI standard algorithm\n";
+const char CompressDocs[] = "Compress(): Compress data using UEFI standard algorithm\n";
 
 STATIC PyMethodDef EfiCompressor_Funcs[] = {
   {"UefiDecompress", (PyCFunction)UefiDecompress, METH_VARARGS, DecompressDocs},
-  {"UefiCompress", (PyCFunction)UefiCompress, METH_VARARGS, DecompressDocs},
+  {"UefiCompress", (PyCFunction)UefiCompress, METH_VARARGS, CompressDocs},
   {"FrameworkDecompress", (PyCFunction)FrameworkDecompress, METH_VARARGS, DecompressDocs},
-  {"FrameworkCompress", (PyCFunction)FrameworkCompress, METH_VARARGS, DecompressDocs},
+  {"FrameworkCompress", (PyCFunction)FrameworkCompress, METH_VARARGS, CompressDocs},
   {NULL, NULL, 0, NULL}
 };
 
 PyMODINIT_FUNC
+#if PY_MAJOR_VERSION >= 3
+PyInit_EfiCompressor(VOID) {
+  static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "EfiCompressor",
+        NULL,
+        0,
+        EfiCompressor_Funcs,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+  };
+  return PyModule_Create(&moduledef);
+#else
 initEfiCompressor(VOID) {
   Py_InitModule3("EfiCompressor", EfiCompressor_Funcs, "EFI Compression Algorithm Extension Module");
+#endif
 }
 
 

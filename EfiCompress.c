@@ -76,16 +76,19 @@ PutDword(
 STATIC
 EFI_STATUS 
 AllocateMemory (
+  void
   );
 
 STATIC
 VOID
 FreeMemory (
+  void
   );
 
 STATIC 
 VOID 
 InitSlide (
+  void
   );
 
 STATIC 
@@ -112,26 +115,31 @@ Split (
 STATIC 
 VOID 
 InsertNode (
+  void
   );
   
 STATIC 
 VOID 
 DeleteNode (
+  void
   );
 
 STATIC 
 VOID 
 GetNextMatch (
+  void
   );
   
 STATIC 
 EFI_STATUS 
 Encode (
+  void
   );
 
 STATIC 
 VOID 
 CountTFreq (
+  void
   );
 
 STATIC 
@@ -145,6 +153,7 @@ WritePTLen (
 STATIC 
 VOID 
 WriteCLen (
+  void
   );
   
 STATIC 
@@ -162,6 +171,7 @@ EncodeP (
 STATIC 
 VOID 
 SendBlock (
+  void
   );
   
 STATIC 
@@ -174,16 +184,19 @@ Output (
 STATIC 
 VOID 
 HufEncodeStart (
+  void
   );
   
 STATIC 
 VOID 
 HufEncodeEnd (
+  void
   );
   
 STATIC 
 VOID 
 MakeCrcTable (
+  void
   );
   
 STATIC 
@@ -203,6 +216,7 @@ FreadCrc (
 STATIC 
 VOID 
 InitPutBits (
+  void
   );
   
 STATIC 
