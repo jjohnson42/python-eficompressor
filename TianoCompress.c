@@ -23,7 +23,7 @@ Abstract:
 
 **/
 
-#include "Compress.h"
+#include <Compress.h>
 
 //
 // Macro Definitions

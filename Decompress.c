@@ -22,7 +22,7 @@ Abstract:
 
 #include <stdlib.h>
 #include <string.h>
-#include "Decompress.h"
+#include <Decompress.h>
 
 //
 // Decompression algorithm begins here
