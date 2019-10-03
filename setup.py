@@ -20,7 +20,7 @@ import os
 
 setup(
     name="EfiCompressor",
-    version="0.01",
+    version="0.5",
     description="Compress and decompress files using the EFI compression format",
     author="Intel TianoCore Project",
     author_email="edk2-devel@lists.sourceforge.net",
