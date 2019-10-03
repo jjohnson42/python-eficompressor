@@ -15,10 +15,9 @@
 ##
 # Import Modules
 #
-from distutils.core import setup, Extension
-import os
+import setuptools
 
-setup(
+setuptools.setup(
     name="EfiCompressor",
     version="0.5",
     description="Compress and decompress files using the EFI compression format",
@@ -27,7 +26,7 @@ setup(
     maintainer="Matthew Garrett",
     maintainer_email="mjg59@srcf.ucam.org",
     ext_modules=[
-        Extension(
+        setuptools.Extension(
             'EfiCompressor',
             sources=[
                 'Decompress.c',
