@@ -84,6 +84,7 @@ FrameworkDecompress(
   UINT32        DstDataSize;
   UINTN         Status;
   UINT8         *DstBuf;
+  PyObject*     ret;
   Py_buffer     PyB;
 
   Status = PyArg_ParseTuple(
@@ -112,7 +113,9 @@ FrameworkDecompress(
     goto ERROR;
   }
 
-  return PyBytes_FromStringAndSize((const char*)DstBuf, (Py_ssize_t)DstDataSize);
+  ret = PyBytes_FromStringAndSize((const char*)DstBuf, (Py_ssize_t)DstDataSize);
+  free(DstBuf);
+  return ret;
 
 ERROR:
 
@@ -194,6 +197,7 @@ FrameworkCompress(
   UINT32        DstDataSize;
   UINTN         Status;
   UINT8         *DstBuf;
+  PyObject      *ret;
   Py_buffer     PyB;
 
   Status = PyArg_ParseTuple(
@@ -231,10 +235,12 @@ FrameworkCompress(
   }
 
 #if PY_MAJOR_VERSION >= 3
-  return PyMemoryView_FromMemory((char*)DstBuf, (Py_ssize_t)DstDataSize, PyBUF_READ);
+  ret = PyMemoryView_FromMemory((char*)DstBuf, (Py_ssize_t)DstDataSize, PyBUF_READ);
 #else
-  return PyBuffer_FromMemory(DstBuf, (Py_ssize_t)DstDataSize);
+  ret = PyBuffer_FromMemory(DstBuf, (Py_ssize_t)DstDataSize);
 #endif
+  PyMem_Free(DstBuf);
+  return ret;
 
 ERROR:
   if (DstBuf != NULL) {

@@ -967,6 +967,7 @@ Extract (
       *Destination = (VOID *)malloc(*DstSize);
       if (Scratch != NULL && *Destination != NULL) {
         Status = TianoDecompress(Source, SrcSize, *Destination, *DstSize, Scratch, ScratchSize);
+        free(Scratch);
       } else {
         Status = EFI_OUT_OF_RESOURCES;
       }
