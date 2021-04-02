@@ -234,11 +234,7 @@ FrameworkCompress(
     goto ERROR;
   }
 
-#if PY_MAJOR_VERSION >= 3
-  ret = PyMemoryView_FromMemory((char*)DstBuf, (Py_ssize_t)DstDataSize, PyBUF_READ);
-#else
-  ret = PyBuffer_FromMemory(DstBuf, (Py_ssize_t)DstDataSize);
-#endif
+  ret = PyBytes_FromStringAndSize((const char*)DstBuf, (Py_ssize_t)DstDataSize);
   PyMem_Free(DstBuf);
   return ret;
 
